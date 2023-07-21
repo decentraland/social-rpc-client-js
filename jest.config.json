@@ -1,0 +1,11 @@
+{
+  "moduleFileExtensions": ["ts", "js"],
+  "transform": {
+    "^.+\\.(ts|tsx)$": "ts-jest"
+  },
+  "coverageDirectory": "coverage",
+  "collectCoverageFrom": ["src/**/*.ts"],
+  "testMatch": ["**/tests/*.spec.(ts)"],
+  "testEnvironment": "node",
+  "resetMocks": true
+}
