@@ -35,15 +35,17 @@ describe('when creating a new client', () => {
   let transport: Transport
   let rpcClient: RpcClient
   let port: RpcClientPort
-  let loadServiceResult: ReturnType<typeof loadService<any, FriendshipsServiceDefinition>>
+  let loadServiceResult: ReturnType<typeof loadService<object, FriendshipsServiceDefinition>>
   let result: Awaited<ReturnType<typeof createSocialClient>>
   let targetAddress: string
-  let updateFriendshipEvent: jest.MockedFunction<ReturnType<typeof loadService<any, FriendshipsServiceDefinition>>['updateFriendshipEvent']>
-  let getRequestEvents: jest.MockedFunction<ReturnType<typeof loadService<any, FriendshipsServiceDefinition>>['getRequestEvents']>
-  let getFriends: jest.MockedFunction<ReturnType<typeof loadService<any, FriendshipsServiceDefinition>>['getFriends']>
-  let getMutualFriends: jest.MockedFunction<ReturnType<typeof loadService<any, FriendshipsServiceDefinition>>['getMutualFriends']>
+  let updateFriendshipEvent: jest.MockedFunction<
+    ReturnType<typeof loadService<object, FriendshipsServiceDefinition>>['updateFriendshipEvent']
+  >
+  let getRequestEvents: jest.MockedFunction<ReturnType<typeof loadService<object, FriendshipsServiceDefinition>>['getRequestEvents']>
+  let getFriends: jest.MockedFunction<ReturnType<typeof loadService<object, FriendshipsServiceDefinition>>['getFriends']>
+  let getMutualFriends: jest.MockedFunction<ReturnType<typeof loadService<object, FriendshipsServiceDefinition>>['getMutualFriends']>
   let subscribeFriendshipEventsUpdates: jest.MockedFunction<
-    ReturnType<typeof loadService<any, FriendshipsServiceDefinition>>['subscribeFriendshipEventsUpdates']
+    ReturnType<typeof loadService<object, FriendshipsServiceDefinition>>['subscribeFriendshipEventsUpdates']
   >
 
   beforeEach(async () => {
@@ -67,7 +69,7 @@ describe('when creating a new client', () => {
       getFriends,
       getMutualFriends,
       subscribeFriendshipEventsUpdates
-    } as unknown as ReturnType<typeof loadService<any, FriendshipsServiceDefinition>>
+    } as unknown as ReturnType<typeof loadService<object, FriendshipsServiceDefinition>>
     createWebSocketsTransportMock.mockReturnValueOnce(transport)
     createRpcClientMock.mockResolvedValueOnce(rpcClient)
     getSynapseTokenMock.mockResolvedValueOnce(accessToken)
@@ -316,7 +318,7 @@ describe('when creating a new client', () => {
   describe("when getting the user's friends", () => {
     describe('and the server returns an error', () => {
       beforeEach(() => {
-        getFriends.mockImplementationOnce(async function* (_request: Payload, _options: any) {
+        getFriends.mockImplementationOnce(async function* (_request: Payload) {
           const userResponse: UsersResponse = {
             internalServerError: {
               message: 'anErrorOccurred'
@@ -334,7 +336,7 @@ describe('when creating a new client', () => {
 
     describe('and the server returns successfully', () => {
       beforeEach(() => {
-        getFriends.mockImplementationOnce(async function* (_request: Payload, _options: any) {
+        getFriends.mockImplementationOnce(async function* (_request: Payload) {
           const userResponse: UsersResponse = {
             users: {
               users: [{ address: '0x1' }]
@@ -360,7 +362,7 @@ describe('when creating a new client', () => {
 
     describe('and the server returns an error', () => {
       beforeEach(() => {
-        getMutualFriends.mockImplementationOnce(async function* (_request: MutualFriendsPayload, _options: any) {
+        getMutualFriends.mockImplementationOnce(async function* (_request: MutualFriendsPayload) {
           const userResponse: UsersResponse = {
             internalServerError: {
               message: 'anErrorOccurred'
@@ -378,7 +380,7 @@ describe('when creating a new client', () => {
 
     describe('and the server returns successfully', () => {
       beforeEach(() => {
-        getMutualFriends.mockImplementationOnce(async function* (_request: MutualFriendsPayload, _options: any) {
+        getMutualFriends.mockImplementationOnce(async function* (_request: MutualFriendsPayload) {
           const userResponse: UsersResponse = {
             users: {
               users: [{ address: '0x1' }]
@@ -399,7 +401,7 @@ describe('when creating a new client', () => {
   describe('when subscribing to friendship requests', () => {
     describe('and the server returns an error', () => {
       beforeEach(() => {
-        subscribeFriendshipEventsUpdates.mockImplementationOnce(async function* (_request: Payload, _options: any) {
+        subscribeFriendshipEventsUpdates.mockImplementationOnce(async function* (_request: Payload) {
           const response: SubscribeFriendshipEventsUpdatesResponse = {
             internalServerError: {
               message: 'anErrorOccurred'
@@ -417,7 +419,7 @@ describe('when creating a new client', () => {
 
     describe('and the server returns successfully', () => {
       beforeEach(() => {
-        subscribeFriendshipEventsUpdates.mockImplementationOnce(async function* (_request: Payload, _options: any) {
+        subscribeFriendshipEventsUpdates.mockImplementationOnce(async function* (_request: Payload) {
           const response: SubscribeFriendshipEventsUpdatesResponse = {
             events: {
               responses: [

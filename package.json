@@ -7,7 +7,7 @@
   "scripts": {
     "prebuild": "sh scripts/prebuild.sh",
     "build": "tsc",
-    "check:code": "eslint -c .eslintrc.js {src/**/*.ts,tests/**/*.ts}",
+    "check:code": "eslint -c .eslintrc.json {src/**/*.ts,tests/**/*.ts}",
     "fix:code": "npm run check:code -- --fix",
     "test": "jest",
     "test:coverage": "npm run test -- --coverage"
@@ -28,6 +28,7 @@
     "@dcl/protocol": "^1.0.0-5557204664.commit-964ab88",
     "@types/jest": "^29.5.3",
     "@types/ws": "^8.5.5",
+    "eslint-plugin-prettier": "^5.0.0",
     "ethers": "^6.6.4",
     "jest": "^29.6.1",
     "nock": "^13.3.2",
