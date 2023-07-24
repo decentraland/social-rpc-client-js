@@ -16,9 +16,11 @@ jobs:
     steps:
       - uses: actions/checkout@master
       - name: Use Node.js 18.x
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v3.7.0
         with:
           node-version: 18.x
+      - name: Install protoc
+        run: apt install -y protobuf-compiler
       - name: Install dependencies
         run: npm install
       - name: Build package
