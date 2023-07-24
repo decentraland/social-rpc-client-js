@@ -21,7 +21,7 @@ jobs:
           cache: 'npm'
           node-version: 18.x
       - name: Install protoc
-        run: apt install -y protobuf-compiler
+        run: sudo apt install -y protobuf-compiler
       - name: Install dependencies
         run: npm install
       - name: Build package
