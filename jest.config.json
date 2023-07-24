@@ -5,6 +5,7 @@
   },
   "coverageDirectory": "coverage",
   "collectCoverageFrom": ["src/**/*.ts"],
+  "coveragePathIgnorePatterns": ["/node_modules/", "src/protobuff-types"],
   "testMatch": ["**/tests/*.spec.(ts)"],
   "testEnvironment": "node",
   "resetMocks": true

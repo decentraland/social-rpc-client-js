@@ -9,7 +9,8 @@
     "build": "tsc",
     "check:code": "eslint -c .eslintrc.js {src/**/*.ts,tests/**/*.ts}",
     "fix:code": "npm run check:code -- --fix",
-    "test": "jest"
+    "test": "jest",
+    "test:coverage": "npm run test -- --coverage"
   },
   "author": "Decentraland",
   "homepage": "http://decentraland.org",
