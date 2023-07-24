@@ -37,8 +37,8 @@ export class SocialClientTooManyRequestsError extends Error {
 }
 
 export class SynapseLoginError extends Error {
-  constructor() {
-    super('The synapse token could not be retrieved')
+  constructor(message: string) {
+    super(`The synapse token could not be retrieved: ${message}`)
   }
 }
 
@@ -62,4 +62,8 @@ export function processErrors(response: Errors): void {
   } else if (response.unauthorizedError) {
     throw new SocialClientUnauthorizedError(response.unauthorizedError.message)
   }
+}
+
+export function isErrorWithMessage(error: unknown): error is Error {
+  return error !== undefined && error !== null && typeof error === 'object' && 'message' in error
 }
