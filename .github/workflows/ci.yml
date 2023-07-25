@@ -38,6 +38,6 @@ jobs:
         uses: menduz/oddish-action@master
         with:
           access: public
-          provenance: true
+          provenance: false
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

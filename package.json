@@ -1,6 +1,6 @@
 {
   "name": "@dcl/social-rpc-client",
-  "version": "0.3.0",
+  "version": "0.0.0",
   "description": "Decentraland Social RPC Client",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
