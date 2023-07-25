@@ -1,0 +1,43 @@
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - '*'
+  release:
+    types:
+      - created
+
+name: Package CI
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: Use Node.js 18.x
+        uses: actions/setup-node@v3.7.0
+        with:
+          cache: 'npm'
+          node-version: 18.x
+      - name: Install protoc
+        run: sudo apt install -y protobuf-compiler
+      - name: Install dependencies
+        run: npm install
+      - name: Build package
+        run: npm run build
+      - name: Run tests
+        run: npm run test:coverage
+      - name: Run linter
+        run: npm run check:code
+      - name: Report Coverage
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish
+        uses: menduz/oddish-action@master
+        with:
+          access: public
+          provenance: true
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
