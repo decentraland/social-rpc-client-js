@@ -6,7 +6,7 @@ export function createWebSocketsTransport(url: string): Transport & { connect: (
   let socket: WebSocket | undefined
   const events = mitt<TransportEvents>()
 
-  const connect = function () {
+  const connectSocket = function () {
     socket = new WebSocket(url)
     socket.binaryType = 'arraybuffer'
 
@@ -59,7 +59,7 @@ export function createWebSocketsTransport(url: string): Transport & { connect: (
       return (socket && socket.readyState === socket.OPEN) || false
     },
     connect() {
-      connect()
+      connectSocket()
     },
     sendMessage(message: any) {
       send(message)
