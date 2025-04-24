@@ -6,7 +6,7 @@ import {
   SocialClientUnauthorizedError,
   processErrors
 } from '../src/errors'
-import { UpdateFriendshipResponse } from '../src/protobuff-types/decentraland/social/friendships/friendships.gen'
+import { UpdateFriendshipResponse } from '../src/protobuff-types/decentraland/social_service/v1/social_service_v1.gen'
 
 let response: UpdateFriendshipResponse
 
