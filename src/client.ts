@@ -7,13 +7,14 @@ import {
   Payload,
   MutualFriendsPayload,
   UpdateFriendshipPayload
-} from './protobuff-types/decentraland/social/friendships/friendships.gen'
+} from './protobuff-types/decentraland/social_service/v1/social_service_v1.gen'
 import { getSynapseToken } from './synapse'
 import { createWebSocketsTransport } from './transport'
 
 export async function createSocialClient(synapseUrl: string, socialClientRpcUrl: string, userAddress: string, identity: AuthIdentity) {
   const synapseToken = await getSynapseToken(synapseUrl, userAddress, identity)
   const webSocketsTransport = createWebSocketsTransport(socialClientRpcUrl)
+  webSocketsTransport.connect()
   const rpcClient = await createRpcClient(webSocketsTransport)
   const port = await rpcClient.createPort('social')
   const service = loadService(port, FriendshipsServiceDefinition)

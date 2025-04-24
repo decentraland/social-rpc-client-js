@@ -12,7 +12,7 @@ import {
   SubscribeFriendshipEventsUpdatesResponse,
   UpdateFriendshipResponse,
   UsersResponse
-} from '../src/protobuff-types/decentraland/social/friendships/friendships.gen'
+} from '../src/protobuff-types/decentraland/social_service/v1/social_service_v1.gen'
 import { getSynapseToken } from '../src/synapse'
 import { createWebSocketsTransport } from '../src/transport'
 
@@ -32,7 +32,7 @@ describe('when creating a new client', () => {
   let userAddress: string
   let accessToken: string
   let identity: AuthIdentity
-  let transport: Transport
+  let transport: Transport & { connect: () => void }
   let rpcClient: RpcClient
   let port: RpcClientPort
   let loadServiceResult: ReturnType<typeof loadService<object, FriendshipsServiceDefinition>>
@@ -54,7 +54,7 @@ describe('when creating a new client', () => {
     userAddress = '0x0'
     identity = {} as AuthIdentity
     accessToken = 'aToken'
-    transport = { close: jest.fn() } as unknown as Transport
+    transport = { close: jest.fn(), connect: jest.fn() } as unknown as Transport & { connect: () => void }
     port = {} as RpcClientPort
     rpcClient = { createPort: jest.fn().mockResolvedValue(port) } as RpcClient
     updateFriendshipEvent = jest.fn()

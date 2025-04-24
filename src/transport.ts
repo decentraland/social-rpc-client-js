@@ -2,11 +2,11 @@ import WebSocket, { MessageEvent } from 'isomorphic-ws'
 import mitt from 'mitt'
 import type { Transport, TransportEvents } from '@dcl/rpc'
 
-export function createWebSocketsTransport(url: string): Transport {
+export function createWebSocketsTransport(url: string): Transport & { connect: () => void } {
   let socket: WebSocket | undefined
   const events = mitt<TransportEvents>()
 
-  const connect = function () {
+  const connectSocket = function () {
     socket = new WebSocket(url)
     socket.binaryType = 'arraybuffer'
 
@@ -22,20 +22,11 @@ export function createWebSocketsTransport(url: string): Transport {
     }
 
     // On error event
-    socket.addEventListener('error', (err: any) => {
+    socket.addEventListener('error', (err: WebSocket.ErrorEvent) => {
       if (err.error) {
         events.emit('error', err.error)
       } else if (err.message) {
-        events.emit(
-          'error',
-          Object.assign(new Error(err.message), {
-            colno: err.colno,
-            error: err.error,
-            filename: err.filename,
-            lineno: err.lineno,
-            message: err.message
-          })
-        )
+        events.emit('error', new Error(err.message))
       }
     })
 
@@ -62,12 +53,13 @@ export function createWebSocketsTransport(url: string): Transport {
     }
   }
 
-  connect()
-
   return {
     ...events,
     get isConnected(): boolean {
       return (socket && socket.readyState === socket.OPEN) || false
+    },
+    connect() {
+      connectSocket()
     },
     sendMessage(message: any) {
       send(message)
