@@ -8,6 +8,7 @@ import {
 import {
   InternalServerError as InternalServerErrorV2,
   InvalidFriendshipAction,
+  ForbiddenError as ForbiddenErrorV2,
   InvalidRequest as InvalidRequestV2
 } from './protobuff-types/decentraland/social_service/v2/social_service_v2.gen'
 
@@ -47,10 +48,16 @@ export class SynapseLoginError extends Error {
   }
 }
 
+export class SocialClientIncompleteResponseError extends Error {
+  constructor() {
+    super('The response is incomplete')
+  }
+}
+
 type Errors = {
   internalServerError?: InternalServerError | InternalServerErrorV2 | undefined
   unauthorizedError?: UnauthorizedError | undefined
-  forbiddenError?: ForbiddenError | undefined
+  forbiddenError?: ForbiddenError | ForbiddenErrorV2 | undefined
   tooManyRequestsError?: TooManyRequestsError | undefined
   badRequestError?: BadRequestError | InvalidRequestV2 | InvalidFriendshipAction | undefined
 }
@@ -59,7 +66,7 @@ export function processErrors(response: Errors): void {
   if (response.badRequestError) {
     throw new SocialClientBadRequestError(response.badRequestError.message ?? 'Unknown error')
   } else if (response.forbiddenError) {
-    throw new SocialClientForbiddenError(response.forbiddenError.message)
+    throw new SocialClientForbiddenError(response.forbiddenError.message ?? 'Unknown error')
   } else if (response.internalServerError) {
     throw new SocialClientInternalServerError(response.internalServerError.message ?? 'Unknown error')
   } else if (response.tooManyRequestsError) {
@@ -67,6 +74,10 @@ export function processErrors(response: Errors): void {
   } else if (response.unauthorizedError) {
     throw new SocialClientUnauthorizedError(response.unauthorizedError.message)
   }
+}
+
+export function hasOkResponse<T extends { ok?: unknown }>(response: T): response is T & { ok: NonNullable<T['ok']> } {
+  return response.ok !== undefined && response.ok !== null
 }
 
 export function isErrorWithMessage(error: unknown): error is Error {
