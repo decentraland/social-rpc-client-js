@@ -99,13 +99,45 @@ export async function createSocialClientV2(socialClientRpcUrl: string, identity:
       // TODO: The protocol should return errors in case of failure
       return service.getFriends(GetFriendsPayload.create({ pagination }))
     },
-    getPendingFriendshipRequests: async function (pagination?: Pagination): Promise<PaginatedFriendshipRequestsResponse> {
-      return service.getPendingFriendshipRequests(GetFriendshipRequestsPayload.create({ pagination }))
+    getPendingFriendshipRequests: async function (
+      pagination?: Pagination
+    ): Promise<
+      Required<
+        { requests: NonNullable<PaginatedFriendshipRequestsResponse['requests']>['requests'] } & Pick<
+          PaginatedFriendshipRequestsResponse,
+          'paginationData'
+        >
+      >
+    > {
+      const response = await service.getPendingFriendshipRequests(GetFriendshipRequestsPayload.create({ pagination }))
+      processErrors(response)
+      if (!response.requests?.requests || !response.paginationData) {
+        throw new SocialClientIncompleteResponseError()
+      }
+      return {
+        requests: response.requests.requests,
+        paginationData: response.paginationData
+      }
     },
-    getSentFriendshipRequests: async function (pagination?: Pagination): Promise<PaginatedFriendshipRequestsResponse> {
+    getSentFriendshipRequests: async function (
+      pagination?: Pagination
+    ): Promise<
+      Required<
+        { requests: NonNullable<PaginatedFriendshipRequestsResponse['requests']>['requests'] } & Pick<
+          PaginatedFriendshipRequestsResponse,
+          'paginationData'
+        >
+      >
+    > {
       const response = await service.getSentFriendshipRequests(GetFriendshipRequestsPayload.create({ pagination }))
       processErrors(response)
-      return response
+      if (!response.requests?.requests || !response.paginationData) {
+        throw new SocialClientIncompleteResponseError()
+      }
+      return {
+        requests: response.requests.requests,
+        paginationData: response.paginationData
+      }
     },
     // TODO: Make it return the status as non undefined
     getFriendshipStatus: async function (address: string): Promise<NonNullable<GetFriendshipStatusResponse['accepted']>> {
@@ -118,9 +150,9 @@ export async function createSocialClientV2(socialClientRpcUrl: string, identity:
 
       return response.accepted
     },
-    getMutualFriends: async function (address: string): Promise<PaginatedFriendsProfilesResponse> {
+    getMutualFriends: async function (address: string, pagination?: Pagination): Promise<PaginatedFriendsProfilesResponse> {
       // TODO: The protocol should return errors in case of failure
-      return service.getMutualFriends(GetMutualFriendsPayload.create({ user: User.create({ address }) }))
+      return service.getMutualFriends(GetMutualFriendsPayload.create({ user: User.create({ address }), pagination }))
     },
     // TODO: Make it return the status as non undefined
     requestFriendship: async function (address: string, message?: string): Promise<NonNullable<UpsertFriendshipResponse['accepted']>> {
