@@ -218,7 +218,10 @@ describe('when creating a new client v2', () => {
       })
 
       it('should return the pending requests', async () => {
-        await expect(result.getPendingFriendshipRequests()).resolves.toEqual(response)
+        await expect(result.getPendingFriendshipRequests()).resolves.toEqual({
+          requests: response.requests?.requests,
+          paginationData: response.paginationData
+        })
         expect(loadServiceResult.getPendingFriendshipRequests).toHaveBeenCalledWith(
           GetFriendshipRequestsPayload.create({ pagination: undefined })
         )
@@ -272,7 +275,10 @@ describe('when creating a new client v2', () => {
       })
 
       it('should return the sent requests', async () => {
-        await expect(result.getSentFriendshipRequests()).resolves.toEqual(response)
+        await expect(result.getSentFriendshipRequests()).resolves.toEqual({
+          requests: response.requests?.requests,
+          paginationData: response.paginationData
+        })
         expect(loadServiceResult.getSentFriendshipRequests).toHaveBeenCalledWith(
           GetFriendshipRequestsPayload.create({ pagination: undefined })
         )
