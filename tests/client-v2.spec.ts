@@ -58,7 +58,7 @@ describe('when creating a new client v2', () => {
   let port: RpcClientPort
   let portCloseMock: jest.MockedFunction<RpcClientPort['close']>
   let loadServiceResult: jest.Mocked<ReturnType<typeof loadService<object, SocialServiceDefinition>>>
-  let result: Awaited<ReturnType<typeof createSocialClientV2>>
+  let result: ReturnType<typeof createSocialClientV2>
   let targetAddress: string
 
   beforeEach(async () => {
@@ -131,7 +131,7 @@ describe('when creating a new client v2', () => {
     })
 
     // Create the client
-    result = await createSocialClientV2(socialClientRpcUrl)
+    result = createSocialClientV2(socialClientRpcUrl)
     await result.connect(identity)
   })
 
