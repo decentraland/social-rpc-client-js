@@ -131,8 +131,8 @@ describe('when creating a new client v2', () => {
     })
 
     // Create the client
-    result = await createSocialClientV2(socialClientRpcUrl, identity)
-    await result.connect()
+    result = await createSocialClientV2(socialClientRpcUrl)
+    await result.connect(identity)
   })
 
   it('should connect to the Social RPC server', () => {
