@@ -189,7 +189,7 @@ export function createSocialClientV2(socialClientRpcUrl: string) {
 
       return response.accepted
     },
-    deleteFriendshipRequest: async function (address: string): Promise<NonNullable<UpsertFriendshipResponse['accepted']>> {
+    removeFriendship: async function (address: string): Promise<NonNullable<UpsertFriendshipResponse['accepted']>> {
       const response = await service.upsertFriendship(UpsertFriendshipPayload.create({ delete: { user: User.create({ address }) } }))
       processErrors(response)
 

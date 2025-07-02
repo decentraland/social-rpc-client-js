@@ -562,13 +562,13 @@ describe('when creating a new client v2', () => {
       })
 
       it('should reject with the error', () => {
-        return expect(result.deleteFriendshipRequest(targetAddress)).rejects.toThrow(
+        return expect(result.removeFriendship(targetAddress)).rejects.toThrow(
           new SocialClientInternalServerError(response.internalServerError?.message ?? '')
         )
       })
 
       it('should reject with the specific error', () => {
-        return expect(result.deleteFriendshipRequest(targetAddress)).rejects.toThrow(SocialClientInternalServerError)
+        return expect(result.removeFriendship(targetAddress)).rejects.toThrow(SocialClientInternalServerError)
       })
     })
 
@@ -591,7 +591,7 @@ describe('when creating a new client v2', () => {
       })
 
       it('should return the friendship status', async () => {
-        await expect(result.deleteFriendshipRequest(targetAddress)).resolves.toEqual(response.accepted)
+        await expect(result.removeFriendship(targetAddress)).resolves.toEqual(response.accepted)
         expect(loadServiceResult.upsertFriendship).toHaveBeenCalledWith(
           UpsertFriendshipPayload.create({ delete: { user: User.create({ address: targetAddress }) } })
         )
