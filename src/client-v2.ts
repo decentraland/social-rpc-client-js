@@ -46,12 +46,12 @@ import { createWebSocketsTransport } from './transport'
 
 const signHeader = signedHeaderFactory()
 
-export async function createSocialClientV2(socialClientRpcUrl: string, identity: AuthIdentity) {
+export async function createSocialClientV2(socialClientRpcUrl: string) {
   let service: RawClient<FromTsProtoServiceDefinition<SocialServiceDefinition>>
   const webSocketsTransport = createWebSocketsTransport(socialClientRpcUrl)
   let port: RpcClientPort
   return {
-    connect: async () => {
+    connect: async (identity: AuthIdentity) => {
       // Create the authorization headers
       const signedHeaders = signHeader(identity, 'GET', '/', {})
       const signedHeadersEntries: Record<string, string> = {}
