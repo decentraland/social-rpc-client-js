@@ -7,8 +7,12 @@ import { AuthIdentity } from 'decentraland-crypto-fetch'
 import { createSocialClientV2 } from '../src/client-v2'
 import { SocialClientInternalServerError } from '../src/errors'
 import {
+  AcceptPrivateVoiceChatPayload,
+  AcceptPrivateVoiceChatResponse,
   BlockUserPayload,
   BlockUserResponse,
+  EndPrivateVoiceChatPayload,
+  EndPrivateVoiceChatResponse,
   GetBlockedUsersPayload,
   GetBlockedUsersResponse,
   GetBlockingStatusResponse,
@@ -16,13 +20,18 @@ import {
   GetFriendshipStatusPayload,
   GetFriendshipStatusResponse,
   GetFriendsPayload,
+  GetIncomingPrivateVoiceChatRequestResponse,
   GetMutualFriendsPayload,
   GetPrivateMessagesSettingsPayload,
   GetPrivateMessagesSettingsResponse,
   GetSocialSettingsResponse,
   PaginatedFriendshipRequestsResponse,
   PaginatedFriendsProfilesResponse,
+  RejectPrivateVoiceChatPayload,
+  RejectPrivateVoiceChatResponse,
   SocialServiceDefinition,
+  StartPrivateVoiceChatPayload,
+  StartPrivateVoiceChatResponse,
   UnblockUserPayload,
   UnblockUserResponse,
   UpsertFriendshipPayload,
@@ -38,51 +47,25 @@ jest.mock('../src/transport')
 jest.mock('@dcl/rpc/dist/codegen')
 jest.mock('@dcl/rpc/dist/client')
 
-const createRpcClientMock = jest.mocked(createRpcClient)
-const createWebSocketsTransportMock = jest.mocked(createWebSocketsTransport)
-const loadServiceMock = jest.mocked(loadService)
-
 describe('when creating a new client v2', () => {
+  let createRpcClientMock: jest.MockedFunction<typeof createRpcClient>
+  let createWebSocketsTransportMock: jest.MockedFunction<typeof createWebSocketsTransport>
+  let loadServiceMock: jest.MockedFunction<typeof loadService>
   let socialClientRpcUrl: string
   let identity: AuthIdentity
   let transport: Transport & { connect: () => void; sendMessage: jest.Mock; on: jest.Mock; close: jest.Mock }
   let rpcClient: RpcClient
   let port: RpcClientPort
-  let loadServiceResult: ReturnType<typeof loadService<object, SocialServiceDefinition>>
-  let result: Awaited<ReturnType<typeof createSocialClientV2>>
+  let portCloseMock: jest.MockedFunction<RpcClientPort['close']>
+  let loadServiceResult: jest.Mocked<ReturnType<typeof loadService<object, SocialServiceDefinition>>>
+  let result: ReturnType<typeof createSocialClientV2>
   let targetAddress: string
 
-  // Mock methods for the service
-  let getFriends: jest.MockedFunction<ReturnType<typeof loadService<object, SocialServiceDefinition>>['getFriends']>
-  let getPendingFriendshipRequests: jest.MockedFunction<
-    ReturnType<typeof loadService<object, SocialServiceDefinition>>['getPendingFriendshipRequests']
-  >
-  let getSentFriendshipRequests: jest.MockedFunction<
-    ReturnType<typeof loadService<object, SocialServiceDefinition>>['getSentFriendshipRequests']
-  >
-  let getFriendshipStatus: jest.MockedFunction<ReturnType<typeof loadService<object, SocialServiceDefinition>>['getFriendshipStatus']>
-  let getMutualFriends: jest.MockedFunction<ReturnType<typeof loadService<object, SocialServiceDefinition>>['getMutualFriends']>
-  let upsertFriendship: jest.MockedFunction<ReturnType<typeof loadService<object, SocialServiceDefinition>>['upsertFriendship']>
-  let subscribeToFriendConnectivityUpdates: jest.MockedFunction<
-    ReturnType<typeof loadService<object, SocialServiceDefinition>>['subscribeToFriendConnectivityUpdates']
-  >
-  let subscribeToFriendshipUpdates: jest.MockedFunction<
-    ReturnType<typeof loadService<object, SocialServiceDefinition>>['subscribeToFriendshipUpdates']
-  >
-  let getSocialSettings: jest.MockedFunction<ReturnType<typeof loadService<object, SocialServiceDefinition>>['getSocialSettings']>
-  let upsertSocialSettings: jest.MockedFunction<ReturnType<typeof loadService<object, SocialServiceDefinition>>['upsertSocialSettings']>
-  let getPrivateMessagesSettings: jest.MockedFunction<
-    ReturnType<typeof loadService<object, SocialServiceDefinition>>['getPrivateMessagesSettings']
-  >
-  let subscribeToBlockUpdates: jest.MockedFunction<
-    ReturnType<typeof loadService<object, SocialServiceDefinition>>['subscribeToBlockUpdates']
-  >
-  let getBlockingStatus: jest.MockedFunction<ReturnType<typeof loadService<object, SocialServiceDefinition>>['getBlockingStatus']>
-  let getBlockedUsers: jest.MockedFunction<ReturnType<typeof loadService<object, SocialServiceDefinition>>['getBlockedUsers']>
-  let blockUser: jest.MockedFunction<ReturnType<typeof loadService<object, SocialServiceDefinition>>['blockUser']>
-  let unblockUser: jest.MockedFunction<ReturnType<typeof loadService<object, SocialServiceDefinition>>['unblockUser']>
-
   beforeEach(async () => {
+    createRpcClientMock = jest.mocked(createRpcClient)
+    createWebSocketsTransportMock = jest.mocked(createWebSocketsTransport)
+    loadServiceMock = jest.mocked(loadService)
+
     socialClientRpcUrl = 'ws:///social-service-v2.decentraland.org'
 
     const wallet = Wallet.createRandom()
@@ -104,51 +87,40 @@ describe('when creating a new client v2', () => {
     } as unknown as Transport & { connect: () => void; sendMessage: jest.Mock; on: jest.Mock; close: jest.Mock }
 
     // Set up port and rpc client mocks
-    port = {} as RpcClientPort
+    portCloseMock = jest.fn()
+    port = { close: portCloseMock } as unknown as RpcClientPort
     rpcClient = { createPort: jest.fn().mockResolvedValue(port) } as RpcClient
-
-    // Mock all service methods
-    getFriends = jest.fn()
-    getPendingFriendshipRequests = jest.fn()
-    getSentFriendshipRequests = jest.fn()
-    getFriendshipStatus = jest.fn()
-    getMutualFriends = jest.fn()
-    upsertFriendship = jest.fn()
-    subscribeToFriendConnectivityUpdates = jest.fn()
-    subscribeToFriendshipUpdates = jest.fn()
-    getSocialSettings = jest.fn()
-    upsertSocialSettings = jest.fn()
-    getPrivateMessagesSettings = jest.fn()
-    subscribeToBlockUpdates = jest.fn()
-    getBlockingStatus = jest.fn()
-    getBlockedUsers = jest.fn()
-    blockUser = jest.fn()
-    unblockUser = jest.fn()
 
     // Set up the loadService result
     loadServiceResult = {
-      getFriends,
-      getPendingFriendshipRequests,
-      getSentFriendshipRequests,
-      getFriendshipStatus,
-      getMutualFriends,
-      upsertFriendship,
-      subscribeToFriendConnectivityUpdates,
-      subscribeToFriendshipUpdates,
-      getSocialSettings,
-      upsertSocialSettings,
-      getPrivateMessagesSettings,
-      subscribeToBlockUpdates,
-      getBlockingStatus,
-      getBlockedUsers,
-      blockUser,
-      unblockUser
-    } as unknown as ReturnType<typeof loadService<object, SocialServiceDefinition>>
+      getFriends: jest.fn(),
+      getPendingFriendshipRequests: jest.fn(),
+      getSentFriendshipRequests: jest.fn(),
+      getFriendshipStatus: jest.fn(),
+      getMutualFriends: jest.fn(),
+      upsertFriendship: jest.fn(),
+      subscribeToFriendConnectivityUpdates: jest.fn(),
+      subscribeToFriendshipUpdates: jest.fn(),
+      getSocialSettings: jest.fn(),
+      upsertSocialSettings: jest.fn(),
+      getPrivateMessagesSettings: jest.fn(),
+      subscribeToBlockUpdates: jest.fn(),
+      getBlockingStatus: jest.fn(),
+      getBlockedUsers: jest.fn(),
+      blockUser: jest.fn(),
+      unblockUser: jest.fn(),
+      startPrivateVoiceChat: jest.fn(),
+      rejectPrivateVoiceChat: jest.fn(),
+      acceptPrivateVoiceChat: jest.fn(),
+      endPrivateVoiceChat: jest.fn(),
+      getIncomingPrivateVoiceChatRequest: jest.fn(),
+      subscribeToPrivateVoiceChatUpdates: jest.fn()
+    }
 
     // Set up mocks
     createWebSocketsTransportMock.mockReturnValueOnce(transport)
     createRpcClientMock.mockResolvedValueOnce(rpcClient)
-    loadServiceMock.mockReturnValueOnce(loadServiceResult)
+    loadServiceMock.mockReturnValueOnce(loadServiceResult as unknown as ReturnType<typeof loadService<object, SocialServiceDefinition>>)
 
     // Simulate the connect event and callback invocation
     transport.on.mockImplementation((event, callback) => {
@@ -159,8 +131,8 @@ describe('when creating a new client v2', () => {
     })
 
     // Create the client
-    result = await createSocialClientV2(socialClientRpcUrl, identity)
-    await result.connect()
+    result = createSocialClientV2(socialClientRpcUrl)
+    await result.connect(identity)
   })
 
   it('should connect to the Social RPC server', () => {
@@ -189,6 +161,7 @@ describe('when creating a new client v2', () => {
     it('should close the websocket transport', () => {
       result.disconnect()
       expect(transport.close).toHaveBeenCalled()
+      expect(portCloseMock).toHaveBeenCalled()
     })
   })
 
@@ -208,12 +181,12 @@ describe('when creating a new client v2', () => {
           ],
           paginationData: { page: 0, total: 1 }
         }
-        getFriends.mockResolvedValueOnce(response)
+        loadServiceResult.getFriends.mockResolvedValueOnce(response)
       })
 
       it('should return the friends', async () => {
         await expect(result.getFriends()).resolves.toEqual(response)
-        expect(getFriends).toHaveBeenCalledWith(GetFriendsPayload.create({ pagination: undefined }))
+        expect(loadServiceResult.getFriends).toHaveBeenCalledWith(GetFriendsPayload.create({ pagination: undefined }))
       })
     })
   })
@@ -241,12 +214,17 @@ describe('when creating a new client v2', () => {
           },
           paginationData: { page: 0, total: 1 }
         }
-        getPendingFriendshipRequests.mockResolvedValueOnce(response)
+        loadServiceResult.getPendingFriendshipRequests.mockResolvedValueOnce(response)
       })
 
       it('should return the pending requests', async () => {
-        await expect(result.getPendingFriendshipRequests()).resolves.toEqual(response)
-        expect(getPendingFriendshipRequests).toHaveBeenCalledWith(GetFriendshipRequestsPayload.create({ pagination: undefined }))
+        await expect(result.getPendingFriendshipRequests()).resolves.toEqual({
+          requests: response.requests?.requests,
+          paginationData: response.paginationData
+        })
+        expect(loadServiceResult.getPendingFriendshipRequests).toHaveBeenCalledWith(
+          GetFriendshipRequestsPayload.create({ pagination: undefined })
+        )
       })
     })
   })
@@ -259,7 +237,7 @@ describe('when creating a new client v2', () => {
         response = {
           internalServerError: { message: 'anErrorOccurred' }
         }
-        getSentFriendshipRequests.mockResolvedValueOnce(response)
+        loadServiceResult.getSentFriendshipRequests.mockResolvedValueOnce(response)
       })
 
       it('should reject with the error', () => {
@@ -293,12 +271,17 @@ describe('when creating a new client v2', () => {
           },
           paginationData: { page: 0, total: 1 }
         }
-        getSentFriendshipRequests.mockResolvedValueOnce(response)
+        loadServiceResult.getSentFriendshipRequests.mockResolvedValueOnce(response)
       })
 
       it('should return the sent requests', async () => {
-        await expect(result.getSentFriendshipRequests()).resolves.toEqual(response)
-        expect(getSentFriendshipRequests).toHaveBeenCalledWith(GetFriendshipRequestsPayload.create({ pagination: undefined }))
+        await expect(result.getSentFriendshipRequests()).resolves.toEqual({
+          requests: response.requests?.requests,
+          paginationData: response.paginationData
+        })
+        expect(loadServiceResult.getSentFriendshipRequests).toHaveBeenCalledWith(
+          GetFriendshipRequestsPayload.create({ pagination: undefined })
+        )
       })
     })
   })
@@ -311,7 +294,7 @@ describe('when creating a new client v2', () => {
         response = {
           internalServerError: { message: 'anErrorOccurred' }
         }
-        getFriendshipStatus.mockResolvedValueOnce(response)
+        loadServiceResult.getFriendshipStatus.mockResolvedValueOnce(response)
       })
 
       it('should reject throwing the received message', () => {
@@ -333,12 +316,12 @@ describe('when creating a new client v2', () => {
             message: 'Friends'
           }
         }
-        getFriendshipStatus.mockResolvedValueOnce(response)
+        loadServiceResult.getFriendshipStatus.mockResolvedValueOnce(response)
       })
 
       it('should return the friendship status', async () => {
         await expect(result.getFriendshipStatus(targetAddress)).resolves.toEqual(response.accepted)
-        expect(getFriendshipStatus).toHaveBeenCalledWith(
+        expect(loadServiceResult.getFriendshipStatus).toHaveBeenCalledWith(
           GetFriendshipStatusPayload.create({ user: User.create({ address: targetAddress }) })
         )
       })
@@ -361,12 +344,14 @@ describe('when creating a new client v2', () => {
           ],
           paginationData: { page: 0, total: 1 }
         }
-        getMutualFriends.mockResolvedValueOnce(response)
+        loadServiceResult.getMutualFriends.mockResolvedValueOnce(response)
       })
 
       it('should return the mutual friends', async () => {
         await expect(result.getMutualFriends(targetAddress)).resolves.toEqual(response)
-        expect(getMutualFriends).toHaveBeenCalledWith(GetMutualFriendsPayload.create({ user: User.create({ address: targetAddress }) }))
+        expect(loadServiceResult.getMutualFriends).toHaveBeenCalledWith(
+          GetMutualFriendsPayload.create({ user: User.create({ address: targetAddress }) })
+        )
       })
     })
   })
@@ -379,7 +364,7 @@ describe('when creating a new client v2', () => {
         response = {
           internalServerError: { message: 'anErrorOccurred' }
         }
-        upsertFriendship.mockResolvedValueOnce(response)
+        loadServiceResult.upsertFriendship.mockResolvedValueOnce(response)
       })
 
       it('should reject with the error', () => {
@@ -407,12 +392,12 @@ describe('when creating a new client v2', () => {
             }
           }
         }
-        upsertFriendship.mockResolvedValueOnce(response)
+        loadServiceResult.upsertFriendship.mockResolvedValueOnce(response)
       })
 
       it('should return the friendship status', async () => {
         await expect(result.requestFriendship(targetAddress)).resolves.toEqual(response.accepted)
-        expect(upsertFriendship).toHaveBeenCalledWith(
+        expect(loadServiceResult.upsertFriendship).toHaveBeenCalledWith(
           UpsertFriendshipPayload.create({ request: { user: User.create({ address: targetAddress }), message: undefined } })
         )
       })
@@ -427,7 +412,7 @@ describe('when creating a new client v2', () => {
         response = {
           internalServerError: { message: 'anErrorOccurred' }
         }
-        upsertFriendship.mockResolvedValueOnce(response)
+        loadServiceResult.upsertFriendship.mockResolvedValueOnce(response)
       })
 
       it('should reject with the error', () => {
@@ -455,12 +440,12 @@ describe('when creating a new client v2', () => {
             }
           }
         }
-        upsertFriendship.mockResolvedValueOnce(response)
+        loadServiceResult.upsertFriendship.mockResolvedValueOnce(response)
       })
 
       it('should return the friendship status', async () => {
         await expect(result.acceptFriendshipRequest(targetAddress)).resolves.toEqual(response.accepted)
-        expect(upsertFriendship).toHaveBeenCalledWith(
+        expect(loadServiceResult.upsertFriendship).toHaveBeenCalledWith(
           UpsertFriendshipPayload.create({ accept: { user: User.create({ address: targetAddress }) } })
         )
       })
@@ -475,7 +460,7 @@ describe('when creating a new client v2', () => {
         response = {
           internalServerError: { message: 'anErrorOccurred' }
         }
-        upsertFriendship.mockResolvedValueOnce(response)
+        loadServiceResult.upsertFriendship.mockResolvedValueOnce(response)
       })
 
       it('should reject with the error', () => {
@@ -504,12 +489,12 @@ describe('when creating a new client v2', () => {
             message: 'A message'
           }
         }
-        upsertFriendship.mockResolvedValueOnce(response)
+        loadServiceResult.upsertFriendship.mockResolvedValueOnce(response)
       })
 
       it('should return the friendship status', async () => {
         await expect(result.rejectFriendshipRequest(targetAddress)).resolves.toEqual(response.accepted)
-        expect(upsertFriendship).toHaveBeenCalledWith(
+        expect(loadServiceResult.upsertFriendship).toHaveBeenCalledWith(
           UpsertFriendshipPayload.create({ reject: { user: User.create({ address: targetAddress }) } })
         )
       })
@@ -524,7 +509,7 @@ describe('when creating a new client v2', () => {
         response = {
           internalServerError: { message: 'anErrorOccurred' }
         }
-        upsertFriendship.mockResolvedValueOnce(response)
+        loadServiceResult.upsertFriendship.mockResolvedValueOnce(response)
       })
 
       it('should reject with the error', () => {
@@ -553,12 +538,12 @@ describe('when creating a new client v2', () => {
             message: 'A message'
           }
         }
-        upsertFriendship.mockResolvedValueOnce(response)
+        loadServiceResult.upsertFriendship.mockResolvedValueOnce(response)
       })
 
       it('should return the friendship status', async () => {
         await expect(result.cancelFriendshipRequest(targetAddress)).resolves.toEqual(response.accepted)
-        expect(upsertFriendship).toHaveBeenCalledWith(
+        expect(loadServiceResult.upsertFriendship).toHaveBeenCalledWith(
           UpsertFriendshipPayload.create({ cancel: { user: User.create({ address: targetAddress }) } })
         )
       })
@@ -573,17 +558,17 @@ describe('when creating a new client v2', () => {
         response = {
           internalServerError: { message: 'anErrorOccurred' }
         }
-        upsertFriendship.mockResolvedValueOnce(response)
+        loadServiceResult.upsertFriendship.mockResolvedValueOnce(response)
       })
 
       it('should reject with the error', () => {
-        return expect(result.deleteFriendshipRequest(targetAddress)).rejects.toThrow(
+        return expect(result.removeFriendship(targetAddress)).rejects.toThrow(
           new SocialClientInternalServerError(response.internalServerError?.message ?? '')
         )
       })
 
       it('should reject with the specific error', () => {
-        return expect(result.deleteFriendshipRequest(targetAddress)).rejects.toThrow(SocialClientInternalServerError)
+        return expect(result.removeFriendship(targetAddress)).rejects.toThrow(SocialClientInternalServerError)
       })
     })
 
@@ -602,12 +587,12 @@ describe('when creating a new client v2', () => {
             message: 'A message'
           }
         }
-        upsertFriendship.mockResolvedValueOnce(response)
+        loadServiceResult.upsertFriendship.mockResolvedValueOnce(response)
       })
 
       it('should return the friendship status', async () => {
-        await expect(result.deleteFriendshipRequest(targetAddress)).resolves.toEqual(response.accepted)
-        expect(upsertFriendship).toHaveBeenCalledWith(
+        await expect(result.removeFriendship(targetAddress)).resolves.toEqual(response.accepted)
+        expect(loadServiceResult.upsertFriendship).toHaveBeenCalledWith(
           UpsertFriendshipPayload.create({ delete: { user: User.create({ address: targetAddress }) } })
         )
       })
@@ -617,7 +602,7 @@ describe('when creating a new client v2', () => {
   describe('when subscribing to friend connectivity updates', () => {
     describe('and the server returns updates', () => {
       beforeEach(() => {
-        subscribeToFriendConnectivityUpdates.mockImplementationOnce(async function* () {
+        loadServiceResult.subscribeToFriendConnectivityUpdates.mockImplementationOnce(async function* () {
           yield {
             friend: {
               address: targetAddress,
@@ -681,7 +666,7 @@ describe('when creating a new client v2', () => {
         response = {
           internalServerError: { message: 'anErrorOccurred' }
         }
-        getSocialSettings.mockResolvedValueOnce(response)
+        loadServiceResult.getSocialSettings.mockResolvedValueOnce(response)
       })
 
       it('should reject with the error', () => {
@@ -705,12 +690,12 @@ describe('when creating a new client v2', () => {
             }
           }
         }
-        getSocialSettings.mockResolvedValueOnce(response)
+        loadServiceResult.getSocialSettings.mockResolvedValueOnce(response)
       })
 
       it('should return the social settings', async () => {
-        await expect(result.getSocialSettings()).resolves.toEqual(response)
-        expect(getSocialSettings).toHaveBeenCalledWith(Empty.create())
+        await expect(result.getSocialSettings()).resolves.toEqual(response.ok)
+        expect(loadServiceResult.getSocialSettings).toHaveBeenCalledWith(Empty.create())
       })
     })
   })
@@ -728,7 +713,7 @@ describe('when creating a new client v2', () => {
         response = {
           internalServerError: { message: 'anErrorOccurred' }
         }
-        upsertSocialSettings.mockResolvedValueOnce(response)
+        loadServiceResult.upsertSocialSettings.mockResolvedValueOnce(response)
       })
 
       it('should reject with the error', () => {
@@ -750,12 +735,12 @@ describe('when creating a new client v2', () => {
             blockedUsersMessagesVisibility: 1
           }
         }
-        upsertSocialSettings.mockResolvedValueOnce(response)
+        loadServiceResult.upsertSocialSettings.mockResolvedValueOnce(response)
       })
 
       it('should return the updated settings', async () => {
-        await expect(result.upsertSocialSettings(settings)).resolves.toEqual(response)
-        expect(upsertSocialSettings).toHaveBeenCalledWith(UpsertSocialSettingsPayload.create(settings))
+        await expect(result.upsertSocialSettings(settings)).resolves.toEqual(response.ok)
+        expect(loadServiceResult.upsertSocialSettings).toHaveBeenCalledWith(UpsertSocialSettingsPayload.create(settings))
       })
     })
   })
@@ -773,7 +758,7 @@ describe('when creating a new client v2', () => {
         response = {
           internalServerError: { message: 'anErrorOccurred' }
         }
-        getPrivateMessagesSettings.mockResolvedValueOnce(response)
+        loadServiceResult.getPrivateMessagesSettings.mockResolvedValueOnce(response)
       })
 
       it('should reject with the error', () => {
@@ -797,12 +782,12 @@ describe('when creating a new client v2', () => {
             ]
           }
         }
-        getPrivateMessagesSettings.mockResolvedValueOnce(response)
+        loadServiceResult.getPrivateMessagesSettings.mockResolvedValueOnce(response)
       })
 
       it('should return the private messages settings', async () => {
-        await expect(result.getPrivateMessagesSettings(addresses)).resolves.toEqual(response)
-        expect(getPrivateMessagesSettings).toHaveBeenCalledWith(
+        await expect(result.getPrivateMessagesSettings(addresses)).resolves.toEqual(response.ok)
+        expect(loadServiceResult.getPrivateMessagesSettings).toHaveBeenCalledWith(
           GetPrivateMessagesSettingsPayload.create({
             user: addresses.map(address => User.create({ address }))
           })
@@ -820,12 +805,12 @@ describe('when creating a new client v2', () => {
           blockedUsers: [targetAddress],
           blockedByUsers: ['0x2']
         }
-        getBlockingStatus.mockResolvedValueOnce(response)
+        loadServiceResult.getBlockingStatus.mockResolvedValueOnce(response)
       })
 
       it('should return the blocking status', async () => {
         await expect(result.getBlockingStatus()).resolves.toEqual(response)
-        expect(getBlockingStatus).toHaveBeenCalledWith(Empty.create())
+        expect(loadServiceResult.getBlockingStatus).toHaveBeenCalledWith(Empty.create())
       })
     })
   })
@@ -846,12 +831,12 @@ describe('when creating a new client v2', () => {
           ],
           paginationData: { page: 0, total: 1 }
         }
-        getBlockedUsers.mockResolvedValueOnce(response)
+        loadServiceResult.getBlockedUsers.mockResolvedValueOnce(response)
       })
 
       it('should return the blocked users', async () => {
         await expect(result.getBlockedUsers()).resolves.toEqual(response)
-        expect(getBlockedUsers).toHaveBeenCalledWith(GetBlockedUsersPayload.create({ pagination: undefined }))
+        expect(loadServiceResult.getBlockedUsers).toHaveBeenCalledWith(GetBlockedUsersPayload.create({ pagination: undefined }))
       })
     })
   })
@@ -871,12 +856,27 @@ describe('when creating a new client v2', () => {
             }
           }
         }
-        blockUser.mockResolvedValueOnce(response)
+        loadServiceResult.blockUser.mockResolvedValueOnce(response)
       })
 
       it('should return the block result', async () => {
-        await expect(result.blockUser(targetAddress)).resolves.toEqual(response)
-        expect(blockUser).toHaveBeenCalledWith(BlockUserPayload.create({ user: User.create({ address: targetAddress }) }))
+        await expect(result.blockUser(targetAddress)).resolves.toEqual(response.ok)
+        expect(loadServiceResult.blockUser).toHaveBeenCalledWith(BlockUserPayload.create({ user: User.create({ address: targetAddress }) }))
+      })
+    })
+
+    describe('and the server returns an error', () => {
+      beforeEach(() => {
+        response = {
+          internalServerError: { message: 'anErrorOccurred' }
+        }
+        loadServiceResult.blockUser.mockResolvedValueOnce(response)
+      })
+
+      it('should reject with the error', () => {
+        return expect(result.blockUser(targetAddress)).rejects.toThrow(
+          new SocialClientInternalServerError(response.internalServerError?.message ?? '')
+        )
       })
     })
   })
@@ -896,12 +896,210 @@ describe('when creating a new client v2', () => {
             }
           }
         }
-        unblockUser.mockResolvedValueOnce(response)
+        loadServiceResult.unblockUser.mockResolvedValueOnce(response)
       })
 
       it('should return the unblock result', async () => {
-        await expect(result.unblockUser(targetAddress)).resolves.toEqual(response)
-        expect(unblockUser).toHaveBeenCalledWith(UnblockUserPayload.create({ user: User.create({ address: targetAddress }) }))
+        await expect(result.unblockUser(targetAddress)).resolves.toEqual(response.ok)
+        expect(loadServiceResult.unblockUser).toHaveBeenCalledWith(
+          UnblockUserPayload.create({ user: User.create({ address: targetAddress }) })
+        )
+      })
+    })
+
+    describe('and the server returns an error', () => {
+      beforeEach(() => {
+        response = {
+          internalServerError: { message: 'anErrorOccurred' }
+        }
+        loadServiceResult.unblockUser.mockResolvedValueOnce(response)
+      })
+
+      it('should reject with the error', () => {
+        return expect(result.unblockUser(targetAddress)).rejects.toThrow(
+          new SocialClientInternalServerError(response.internalServerError?.message ?? '')
+        )
+      })
+    })
+  })
+
+  describe('when starting a private voice chat', () => {
+    let response: StartPrivateVoiceChatResponse
+
+    describe('and the server returns successfully', () => {
+      beforeEach(() => {
+        response = {
+          ok: {
+            callId: '123'
+          }
+        }
+        loadServiceResult.startPrivateVoiceChat.mockResolvedValueOnce(response)
+      })
+
+      it('should resolve with the voice chat result', async () => {
+        await expect(result.startPrivateVoiceChat(targetAddress)).resolves.toEqual(response.ok)
+        expect(loadServiceResult.startPrivateVoiceChat).toHaveBeenCalledWith(
+          StartPrivateVoiceChatPayload.create({ callee: User.create({ address: targetAddress }) })
+        )
+      })
+    })
+
+    describe('and the server returns an error', () => {
+      beforeEach(() => {
+        response = {
+          internalServerError: { message: 'anErrorOccurred' }
+        }
+        loadServiceResult.startPrivateVoiceChat.mockResolvedValueOnce(response)
+      })
+
+      it('should reject with the error', () => {
+        return expect(result.startPrivateVoiceChat(targetAddress)).rejects.toThrow(
+          new SocialClientInternalServerError(response.internalServerError?.message ?? '')
+        )
+      })
+    })
+  })
+
+  describe('when rejecting a private voice chat', () => {
+    let response: RejectPrivateVoiceChatResponse
+
+    describe('and the server returns successfully', () => {
+      beforeEach(() => {
+        response = {
+          ok: {
+            callId: '123'
+          }
+        }
+        loadServiceResult.rejectPrivateVoiceChat.mockResolvedValueOnce(response)
+      })
+
+      it('should resolve with the voice chat result', async () => {
+        await expect(result.rejectPrivateVoiceChat('123')).resolves.toEqual(response.ok)
+        expect(loadServiceResult.rejectPrivateVoiceChat).toHaveBeenCalledWith(RejectPrivateVoiceChatPayload.create({ callId: '123' }))
+      })
+    })
+
+    describe('and the server returns an error', () => {
+      beforeEach(() => {
+        response = {
+          internalServerError: { message: 'anErrorOccurred' }
+        }
+        loadServiceResult.rejectPrivateVoiceChat.mockResolvedValueOnce(response)
+      })
+
+      it('should reject with the error', () => {
+        return expect(result.rejectPrivateVoiceChat('123')).rejects.toThrow(
+          new SocialClientInternalServerError(response.internalServerError?.message ?? '')
+        )
+      })
+    })
+  })
+
+  describe('when accepting a private voice chat', () => {
+    let response: AcceptPrivateVoiceChatResponse
+
+    describe('and the server returns successfully', () => {
+      beforeEach(() => {
+        response = {
+          ok: {
+            callId: '123',
+            credentials: {
+              connectionUrl: 'a-connection-url'
+            }
+          }
+        }
+        loadServiceResult.acceptPrivateVoiceChat.mockResolvedValueOnce(response)
+      })
+
+      it('should resolve with the voice chat result', async () => {
+        await expect(result.acceptPrivateVoiceChat('123')).resolves.toEqual(response.ok)
+        expect(loadServiceResult.acceptPrivateVoiceChat).toHaveBeenCalledWith(AcceptPrivateVoiceChatPayload.create({ callId: '123' }))
+      })
+    })
+
+    describe('and the server returns an error', () => {
+      beforeEach(() => {
+        response = {
+          internalServerError: { message: 'anErrorOccurred' }
+        }
+        loadServiceResult.acceptPrivateVoiceChat.mockResolvedValueOnce(response)
+      })
+
+      it('should reject with the error', () => {
+        return expect(result.acceptPrivateVoiceChat('123')).rejects.toThrow(
+          new SocialClientInternalServerError(response.internalServerError?.message ?? '')
+        )
+      })
+    })
+  })
+
+  describe('when ending a private voice chat', () => {
+    let response: EndPrivateVoiceChatResponse
+
+    describe('and the server returns successfully', () => {
+      beforeEach(() => {
+        response = {
+          ok: {
+            callId: '123'
+          }
+        }
+        loadServiceResult.endPrivateVoiceChat.mockResolvedValueOnce(response)
+      })
+
+      it('should resolve with the voice chat result', async () => {
+        await expect(result.endPrivateVoiceChat('123')).resolves.toEqual(response.ok)
+        expect(loadServiceResult.endPrivateVoiceChat).toHaveBeenCalledWith(EndPrivateVoiceChatPayload.create({ callId: '123' }))
+      })
+    })
+
+    describe('and the server returns an error', () => {
+      beforeEach(() => {
+        response = {
+          internalServerError: { message: 'anErrorOccurred' }
+        }
+        loadServiceResult.endPrivateVoiceChat.mockResolvedValueOnce(response)
+      })
+
+      it('should reject with the error', () => {
+        return expect(result.endPrivateVoiceChat('123')).rejects.toThrow(
+          new SocialClientInternalServerError(response.internalServerError?.message ?? '')
+        )
+      })
+    })
+  })
+
+  describe('when getting incoming private voice chat requests', () => {
+    let response: GetIncomingPrivateVoiceChatRequestResponse
+
+    describe('and the server returns successfully', () => {
+      beforeEach(() => {
+        response = {
+          ok: {
+            callId: '123',
+            caller: User.create({ address: targetAddress })
+          }
+        }
+        loadServiceResult.getIncomingPrivateVoiceChatRequest.mockResolvedValueOnce(response)
+      })
+
+      it('should resolve with the voice chat result', async () => {
+        await expect(result.getIncomingPrivateVoiceChatRequests()).resolves.toEqual(response.ok)
+        expect(loadServiceResult.getIncomingPrivateVoiceChatRequest).toHaveBeenCalledWith(Empty.create())
+      })
+    })
+
+    describe('and the server returns an error', () => {
+      beforeEach(() => {
+        response = {
+          internalServerError: { message: 'anErrorOccurred' }
+        }
+        loadServiceResult.getIncomingPrivateVoiceChatRequest.mockResolvedValueOnce(response)
+      })
+
+      it('should reject with the error', () => {
+        return expect(result.getIncomingPrivateVoiceChatRequests()).rejects.toThrow(
+          new SocialClientInternalServerError(response.internalServerError?.message ?? '')
+        )
       })
     })
   })
