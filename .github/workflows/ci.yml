@@ -31,11 +31,11 @@ jobs:
       - name: Run linter
         run: npm run check:code
       - name: Report Coverage
-        uses: coverallsapp/github-action@master
+        uses: coverallsapp/github-action@09b709cf6a16e30b0808ba050c7a6e8a5ef13f8d # @master
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish
-        uses: menduz/oddish-action@master
+        uses: menduz/oddish-action@b08e312231a6f5bbe63618f6dcaf0a1e54527c49 # @master
         with:
           access: public
           provenance: false
