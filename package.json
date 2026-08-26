@@ -16,7 +16,7 @@
   "homepage": "http://decentraland.org",
   "repository": {
     "type": "git",
-    "url": "git://github.com/decentraland/profile.git"
+    "url": "git+https://github.com/decentraland/social-rpc-client-js.git"
   },
   "license": "ISC",
   "files": [
